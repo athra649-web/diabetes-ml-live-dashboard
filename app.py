@@ -222,18 +222,19 @@ if predict_button:
 
         results_table = pd.DataFrame(prediction_results)
 
-        # Save predictions to Google Sheets
+               # Save predictions to Google Sheets
         try:
             save_prediction_to_sheets(
                 student_name.strip(),
                 prediction_results
             )
             st.success("Results saved to Live Dashboard!")
+
         except Exception as e:
             st.warning(
                 "Prediction succeeded, but results were not saved."
             )
-
+            st.error(f"Error type: {type(e).__name__}")
 
         st.dataframe(
             results_table,
