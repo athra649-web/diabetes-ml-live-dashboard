@@ -222,19 +222,18 @@ if predict_button:
 
         results_table = pd.DataFrame(prediction_results)
 
-               # Save predictions to Google Sheets
+        # Save predictions to Google Sheets
         try:
             save_prediction_to_sheets(
                 student_name.strip(),
                 prediction_results
             )
             st.success("Results saved to Live Dashboard!")
-
         except Exception as e:
             st.warning(
                 "Prediction succeeded, but results were not saved."
             )
-            st.error(f"Error type: {type(e).__name__}")
+
 
         st.dataframe(
             results_table,
@@ -248,3 +247,120 @@ if predict_button:
         )
 
 
+
+
+
+def load_live_results():
+
+    # Connect to Google Sheets
+    worksheet = connect_google_sheets()
+
+    # Read all records
+    records = worksheet.get_all_records()
+
+    # Convert records into a DataFrame
+    if records:
+        return pd.DataFrame(records)
+
+    # Return empty DataFrame if no submissions
+    return pd.DataFrame(
+        columns=[
+            "Timestamp",
+            "Participant",
+            "KNN",
+            "BNB",
+            "DT",
+            "LR",
+            "SVM"
+        ]
+    )
+
+
+
+# ==========================================
+# LIVE DASHBOARD
+# ==========================================
+
+@st.fragment(run_every="5s")
+def show_live_dashboard():
+
+    st.title("Live Diabetes Prediction Dashboard")
+
+    st.caption(
+        "Live classroom results | "
+        "Educational demonstration only"
+    )
+
+    try:
+        # Read latest results from Google Sheets
+        df_live = load_live_results()
+
+        if df_live.empty:
+            st.info("Waiting for student submissions...")
+            return
+
+        model_columns = ["KNN", "BNB", "DT", "LR", "SVM"]
+
+        # Dashboard summary
+        total_participants = len(df_live)
+
+        total_positive = (
+            df_live[model_columns] == "Positive"
+        ).sum().sum()
+
+        total_negative = (
+            df_live[model_columns] == "Negative"
+        ).sum().sum()
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Submissions", total_participants)
+        col2.metric("Positive Predictions", total_positive)
+        col3.metric("Negative Predictions", total_negative)
+
+        st.subheader("Live Student Predictions")
+
+        display_columns = [
+            "Participant", "KNN", "BNB",
+            "DT", "LR", "SVM"
+        ]
+
+        st.dataframe(
+            df_live[display_columns],
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.subheader("Model Prediction Comparison")
+
+        chart_data = pd.DataFrame({
+            "Positive": (
+                df_live[model_columns] == "Positive"
+            ).sum(),
+            "Negative": (
+                df_live[model_columns] == "Negative"
+            ).sum()
+        })
+
+        st.bar_chart(chart_data)
+
+        st.caption("Automatically refreshes every 5 seconds.")
+
+    except Exception as e:
+        st.warning(
+            "Dashboard data could not be loaded."
+        )
+        st.error(f"Error type: {type(e).__name__}")
+
+
+# Dashboard navigation
+st.divider()
+
+page = st.radio(
+    "Navigation",
+    ["Student Prediction", "Live Dashboard"],
+    horizontal=True
+)
+
+if page == "Live Dashboard":
+    show_live_dashboard()
